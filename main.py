@@ -46,6 +46,7 @@ def main():
         logging.warning("Warning: a is not 2")
 
     logging.error("This is just an error message for demonstration")
+    logging.critical("This is just a critical message for demonstration")
 
     logging.info("Program ended")
 
