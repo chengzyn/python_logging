@@ -1,38 +1,60 @@
 import argparse
 import logging
+import threading
 
 
-def logger_setup(logfilepath=None):
-    # Set up a parser from the command line
-    parser = argparse.ArgumentParser()
-    parser.add_argument('--debug', action='store_true', help='Enable debug level logging')
-    parser.add_argument('--info', action='store_true', help='Enable info level logging')
-    parser.add_argument('--warning', action='store_true', help='Enable warning level logging')
-    parser.add_argument('--error', action='store_true', help='Enable error level logging')
-    parser.add_argument('--critical', action='store_true', help='Enable critical level logging')
-    args = parser.parse_args()
+class LoggerSetup:
+    _instance = None
+    _lock = threading.Lock()
 
-    # Determine the logging level based on the most critical flag given
-    if args.debug:
-        log_level = logging.DEBUG
-    elif args.info:
-        log_level = logging.INFO
-    elif args.warning:
-        log_level = logging.WARNING
-    elif args.error:
-        log_level = logging.ERROR
-    elif args.critical:
-        log_level = logging.CRITICAL
-    else:
-        log_level = logging.WARNING  # Default level if no flag is provided
+    def __new__(cls, *args, **kwargs):
+        with cls._lock:
+            if cls._instance is None:
+                cls._instance = super(LoggerSetup, cls).__new__(cls)
+        return cls._instance
 
-    # Set the configuration for the logging based on command line flags
-    set_logging(level=log_level, logfilepath=logfilepath)
+    def __init__(self, logfilepath=None):
+        if not hasattr(self, 'initialized'):  # Ensure __init__ runs only once
+            self.logfilepath = logfilepath
+            self.log_level = logging.WARNING  # Default log level
+            self.configure_logging()
+            self.initialized = True
 
+    def configure_logging(self):
+        args = self.parse_arguments()
+        self.determine_log_level(args)
+        self.set_logging()
 
-def set_logging(level, logfilepath=None):
-    log_format = '%(asctime)s - %(levelname)s - %(message)s'
-    if logfilepath:
-        logging.basicConfig(filename=logfilepath, filemode='w', level=level, format=log_format)
-    else:
-        logging.basicConfig(level=level, format=log_format)
+    @staticmethod
+    def parse_arguments():
+        parser = argparse.ArgumentParser()
+        parser.add_argument('--debug', action='store_true', help='Enable debug level logging')
+        parser.add_argument('--info', action='store_true', help='Enable info level logging')
+        parser.add_argument('--warning', action='store_true', help='Enable warning level logging')
+        parser.add_argument('--error', action='store_true', help='Enable error level logging')
+        parser.add_argument('--critical', action='store_true', help='Enable critical level logging')
+        return parser.parse_args()
+
+    def determine_log_level(self, args):
+        if args.debug:
+            self.log_level = logging.DEBUG
+        elif args.info:
+            self.log_level = logging.INFO
+        elif args.warning:
+            self.log_level = logging.WARNING
+        elif args.error:
+            self.log_level = logging.ERROR
+        elif args.critical:
+            self.log_level = logging.CRITICAL
+        else:
+            self.log_level = logging.WARNING  # Default level if no flag is provided
+
+    def set_logging(self):
+        log_format = '%(asctime)s - %(levelname)s - %(message)s'
+        if self.logfilepath:
+            logging.basicConfig(filename=self.logfilepath, filemode='w', level=self.log_level, format=log_format)
+        else:
+            logging.basicConfig(level=self.log_level, format=log_format)
+
+    def get_logger(self):
+        return logging.getLogger()
