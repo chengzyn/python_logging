@@ -4,6 +4,9 @@ import threading
 
 
 class LoggerSetup:
+    """
+    Uses a singleton design pattern that ensures logging is configured only once.
+    """
     _instance = None
     _lock = threading.Lock()
 
